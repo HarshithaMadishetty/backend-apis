@@ -40,3 +40,51 @@ function parseBody(req:IncomingMessage) : Promise<any>{
         });
     });
 }
+
+//send response
+function send(res: ServerResponse,statusCode:number,data:any):void{
+    res.writeHead(statusCode,{"Content-Type" : "application/json"});
+    res.end(JSON.stringify(data));
+}
+
+//extract and verify bearer token
+function authenticate(req : IncomingMessage) : AuthPayload | null {
+    const authHeader = req.headers["authorization"];
+    if(!authHeader || !authHeader.startsWith("Bearer")) return null;
+    try{
+        const token = authHeader.split(" ")[1];
+        return jwt.verify(token , JWT_SECRET) as AuthPayload;
+    } catch {
+        return null;
+    }
+}
+
+//error reponse
+function errorResponse(message : string , statusCode = 400){
+    return {message , statusCode};
+}
+
+//Server code
+const server = http.createServer(async(req: IncomingMessage , res:ServerResponse) => {
+    const {method,url} = req;
+
+    if(method === "POST" && url === "/register"){
+        const {email,password} = await parseBody(req);
+        if(!email || !password){
+            return send(res,400,errorResponse("Email and password required!!"));
+        }
+        users.push({id: Date.now(), email, password});
+        return send(res, 201, {message: "User registered"});
+    }
+
+    if(method === "POST" && url === "/login"){
+        const {email, password} = await parseBody(req);
+        const user = users.find(u => u.email === email && u.password === password);
+        if(!user){
+            return send(res,401,errorResponse("Invalid Credentials", 401));
+        }
+        const token = jwt.sign({email: user.email}, JWT_SECRET, {expiresIn: "1h"});
+        return send(res, 200, {token});
+    }
+    
+})
