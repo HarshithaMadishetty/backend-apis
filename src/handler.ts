@@ -83,7 +83,7 @@ const server = http.createServer(async(req: IncomingMessage , res:ServerResponse
         if(!user){
             return send(res,401,errorResponse("Invalid Credentials", 401));
         }
-        const token = jwt.sign({email: user.email}, JWT_SECRET, {expiresIn: "1h"});
+        const token = jwt.sign({id: user.id, email: user.email}, JWT_SECRET, {expiresIn: "1h"});
         return send(res, 200, {token});
     }
 
