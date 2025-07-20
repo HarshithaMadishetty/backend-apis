@@ -86,5 +86,39 @@ const server = http.createServer(async(req: IncomingMessage , res:ServerResponse
         const token = jwt.sign({email: user.email}, JWT_SECRET, {expiresIn: "1h"});
         return send(res, 200, {token});
     }
-    
-})
+
+    if(method === "GET" && url === "/profile"){
+        const user = authenticate(req);
+        if(!user){
+            return send(res, 401, errorResponse("Unauthorised", 401));
+        } 
+        return send(res,200,{user});
+    }
+
+    if(method === "GET" && url === "/tasks"){
+        const user = authenticate(req);
+        if(!user){
+            return send(res,401, errorResponse("Unauthorised", 401));
+        }
+        const userTasks = tasks.filter(t => t.userId === user.id);
+        return send(res, 200, userTasks);
+    }
+
+    if(method === "POST" && url === "/tasks"){
+        const user = authenticate(req);
+        if(!user){
+            return send(res,401,errorResponse("Unauthorised", 401));
+        }
+        const {title} = await parseBody(req);
+        if(!title){
+            return send(res, 400, errorResponse("Task title required"));
+        }
+        const task: Task = {id: Date.now(), userId: user.id, title, completed:false};
+        tasks.push(task);
+        return send(res, 201, task);
+    }
+
+    return send(res, 404, errorResponse("Not Found", 404));
+});
+
+server.listen(3000, () => console.log("Server running at http://localhost:3000"));
